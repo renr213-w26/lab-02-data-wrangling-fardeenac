@@ -3,7 +3,6 @@ title: "Lab 2 - Data wrangling"
 author: "John Q. Student"
 date: "June 24, 1497"
 format: 
-  html: default # for speed
   pdf: default # for final output
 
 ---
@@ -14,6 +13,7 @@ format:
 #| message: false
 
 library(tidyverse)
+midwest
 ```
 
 
@@ -23,34 +23,273 @@ library(tidyverse)
 
 ### Question 1
 
+```{r}
+midwest %>%
+  count(state, sort = TRUE)
+```
+
+The state with the highest number of counties is **Illinois**, and the state with the lowest number of counties is **WI**.
+
 
 \newpage
 
 ### Question 2
+```{r}
+midwest %>%
+  count(county) %>%
+  filter(n == n_distinct(midwest$state))
+```
 
+These are the county names that appear in every state in the dataset.
 \newpage
 
 ### Question 3
 \newpage
 
-### Question 5
+## a
 
+```{r}
+midwest %>%
+  filter(poptotal / area > 25000) %>%
+  mutate(pop_density = poptotal / area) %>%
+  select(county, state, pop_density, poptotal, area) %>%
+  arrange(desc(pop_density))
+```
+## b
+
+```{r}
+midwest %>%
+  mutate(pop_density = poptotal / area) %>%
+  filter(pop_density == max(pop_density)) %>%
+  select(county, state, pop_density, poptotal, area)
+```
+
+
+### Question 4
+
+```{r}
+midwest %>%
+  mutate(pop_density = poptotal / area) %>%
+  summarise(
+    median_density = median(pop_density),
+    Q1 = quantile(pop_density, 0.25),
+    Q3 = quantile(pop_density, 0.75)
+  )
+```
+
+The distribution of population density is right-skewed. A typical county has a population density around the 1156208. The middle 50% of counties fall between 622407.4 and 2330000.
+
+### Question 5
+```{r}
+midwest %>%
+  mutate(metro = if_else(inmetro == 1, "Yes", "No")) %>%
+  count(state, metro) %>%
+  group_by(state) %>%
+  mutate(prop = n / sum(n))
+```
 \newpage
 
 ### Question 6
 
+#### a.
+
+```{r}
+midwest %>%
+  filter(
+    percbelowpoverty > 30,
+    percollege < 15
+  ) %>%
+  select(county, state, percbelowpoverty, percollege)
+```
+#### b.
+
+```{r}
+midwest %>%
+  filter(
+    percbelowpoverty > 15,
+    percollege > 35
+  ) %>%
+  select(county, state, percbelowpoverty, percollege)
+```
+#### c.
+
+```{r}
+midwest %>%
+  filter(
+    (percbelowpoverty > 30 & percollege < 15) |
+    (percbelowpoverty > 15 & percollege > 35)
+  ) %>%
+  select(county, state, percbelowpoverty, percollege)
+```
+#### d.
+
+```{r}
+midwest_updated <- midwest %>%
+  mutate(
+    potential_outlier = if_else(
+      (percbelowpoverty > 30 & percollege < 15) |
+      (percbelowpoverty > 15 & percollege > 35),
+      "Yes",
+      "No"
+    )
+  ) %>%
+  select(
+    county,
+    state,
+    percbelowpoverty,
+    percollege,
+    potential_outlier
+  ) %>%
+  arrange(potential_outlier)
+
+midwest_updated
+```
+
+#### e.
+
+```{r}
+ggplot(
+  midwest_updated,
+  aes(
+    x = percollege,
+    y = percbelowpoverty,
+    color = potential_outlier
+  )
+) +
+  geom_point() +
+  labs(
+    title = "Percentage Below Poverty vs. Percentage College Educated",
+    x = "Percentage College Educated",
+    y = "Percentage Below Poverty",
+    color = "Potential Outlier"
+  ) +
+  theme_minimal()
+```
+
 \newpage
 
 ### Question 7
+#### a.
 
+```{r}
+state_population <- midwest %>%
+  group_by(state) %>%
+  summarise(total_population = sum(poptotal)) %>%
+  arrange(desc(total_population))
+
+state_population
+```
+
+#### b.
+
+```{r}
+state_population %>%
+  mutate(population_proportion = total_population / sum(total_population)) %>%
+  arrange(desc(population_proportion))
+```
+
+#### c.
+
+The most populous Midwestern state is the one at the top of the table in part (b), and its proportion gives the percent of the Midwest population living there. The least populous state is the one at the bottom of the table, and its proportion gives the smallest share of the Midwest population.
 \newpage
 
 ### Question 8
+```{r}
+state_poverty <- midwest %>%
+  group_by(state) %>%
+  summarise(mean_percbelowpoverty = mean(percbelowpoverty)) 
 
+state_poverty
+```
+
+```{r}
+state_poverty %>%
+  arrange(mean_percbelowpoverty)
+```
+
+The state with the lowest average percentage below poverty is the one at the top of the table, and the state with the highest average percentage below poverty is the one at the bottom.
 \newpage
 
 ## Part 2
 
 
 ### Question 9
+
+```{r}
+df <- tibble(
+  var_1 = c(10, 20, 30, 40, 50),
+  var_2 = c("Pizza", "Burger", "Pizza", "Pizza", "Burger"),
+  var_3 = c("Apple", "Apple", "Pear", "Pear", "Banana")
+)
+
+df
+```
+
+#### a.
+
+```{r}
+df |>
+  arrange(var_2)
+```
+
+This code sorts the rows of `df` by `var_2` in ascending alphabetical order. The `arrange()` function changes the order of the rows, but it does not group the data or calculate any summaries.
+
+#### b.
+
+```{r}
+df |>
+  group_by(var_2)
+```
+
+This code groups the data by `var_2`, meaning observations with the same value of `var_2` are placed in the same group. Unlike `arrange()`, `group_by()` does not sort the rows for display purposes; instead, it prepares the data for grouped operations like `summarize()` or `mutate()`.
+
+#### c.
+
+```{r}
+df |>
+  group_by(var_2) |>
+  summarize(mean_var_1 = mean(var_1))
+```
+
+This pipeline groups the data by `var_2` and then calculates the mean of `var_1` for each group. The result is a new data frame with one row for each value of `var_2` and a column showing the average of `var_1` within that group.
+
+#### d.
+
+```{r}
+df |>
+  group_by(var_2, var_3) |>
+  summarize(mean_var_1 = mean(var_1))
+```
+
+This pipeline groups the data by both `var_2` and `var_3`, then calculates the mean of `var_1` for each combination of those two variables. The message indicates that the output is still grouped by `var_2`, because `summarize()` drops only the last level of grouping by default.
+
+#### e.
+
+```{r}
+df |>
+  group_by(var_2, var_3) |>
+  summarize(mean_var_1 = mean(var_1), .groups = "drop")
+```
+
+This pipeline also calculates the mean of `var_1` for each combination of `var_2` and `var_3`, but the `.groups = "drop"` argument removes all grouping from the output. Unlike part (d), the result is no longer grouped after the summary is created.
+
+#### f.
+
+```{r}
+df |>
+  group_by(var_2, var_3) |>
+  summarize(mean_var_1 = mean(var_1), .groups = "drop")
+```
+
+This pipeline creates a smaller summarized data frame with one row for each combination of `var_2` and `var_3`, along with the mean of `var_1` for that group.
+
+```{r}
+df |>
+  group_by(var_2, var_3) |>
+  mutate(mean_var_1 = mean(var_1))
+```
+
+This pipeline keeps all original rows but adds a new column called `mean_var_1`, which gives the mean of `var_1` within each `var_2` and `var_3` group.
+
+The outputs are different because `summarize()` reduces the data to one row per group, while `mutate()` keeps every original row and adds the group-level calculation alongside it.
 
